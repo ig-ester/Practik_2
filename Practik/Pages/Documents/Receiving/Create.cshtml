@@ -1,0 +1,292 @@
+﻿@page
+@model Praktik.Pages.Documents.Receiving.CreateModel
+@{
+    ViewData["Title"] = "Приёмка товара";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-arrow-in-down me-2"></i>Приёмка товара</h2>
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Назад
+    </a>
+</div>
+
+<form method="post" class="needs-validation" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="card mb-4">
+        <div class="card-header">Основная информация</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="WarehouseId" class="form-label">Склад *</label>
+                    <select asp-for="WarehouseId" class="form-select" required>
+                        <option value="">Выберите склад</option>
+                        @foreach (var w in Model.Warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ContractorId" class="form-label">Поставщик</label>
+                    <select asp-for="ContractorId" class="form-select">
+                        <option value="">Не выбрано</option>
+                        @foreach (var c in Model.Contractors)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Comment" class="form-label">Комментарий</label>
+                <textarea asp-for="Comment" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Товары</span>
+            <button type="button" id="addItem" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Добавить позицию
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:20%">Товар</th>
+                            <th style="width:15%">Серия</th>
+                            <th style="width:15%">Срок годности *</th>
+                            <th style="width:15%">Код маркировки</th>
+                            <th style="width:10%">Кол-во</th>
+                            <th style="width:15%">Цена</th>
+                            <th style="width:10%">Сумма</th>
+                            <th style="width:5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsContainer"></tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="6" class="text-end">Итого:</th>
+                            <th colspan="2"><span id="totalAmount">0.00</span> ₽</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a asp-page="Index" class="btn btn-secondary">Отмена</a>
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-lg me-2"></i>Провести приёмку
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let itemIndex = 0;
+        const today = new Date().toISOString().split('T')[0];
+
+        // Глобальная функция loadBatches для вызова из onchange
+        window.loadBatches = function(selectElement) {
+            const row = selectElement.closest('.item-row');
+            loadBatchesForProduct(selectElement, row);
+        };
+
+        window.setMinDate = function() {
+            document.querySelectorAll('.batch-expiration').forEach(input => {
+                input.setAttribute('min', today);
+            });
+        };
+
+        function loadBatchesForProduct(select, row) {
+            const productId = select.value;
+            const batchSelect = row.querySelector('.batch-select');
+            const priceInput = row.querySelector('.price-input');
+
+            batchSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+            if (!productId) {
+                batchSelect.innerHTML = '<option value="">Сначала выберите товар</option>';
+                return;
+            }
+
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption && selectedOption.dataset.price) {
+                priceInput.value = selectedOption.dataset.price.toString().replace(',', '.');
+            }
+
+            const url = '/api/batches/by-product?productId=' + encodeURIComponent(productId);
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    batchSelect.innerHTML = '<option value="">Выберите серию</option>';
+
+                    if (!data || data.length === 0) {
+                        batchSelect.innerHTML += '<option value="" disabled>Нет серий - создайте новую</option>';
+                    } else {
+                        data.forEach(batch => {
+                            const expDate = batch.expirationDate ? new Date(batch.expirationDate).toLocaleDateString('ru-RU') : '';
+                            const isExpired = batch.expirationDate && new Date(batch.expirationDate) < new Date();
+                            const option = document.createElement('option');
+                            option.value = batch.id;
+                            option.textContent = batch.seriesNumber + (expDate ? ' (до ' + expDate + ')' : '') + (isExpired ? ' 🔴' : '');
+                            if (isExpired) option.style.color = 'red';
+                            batchSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    batchSelect.innerHTML = '<option value="">❌ Ошибка</option>';
+                });
+        }
+
+        window.toggleNewBatch = function(btn) {
+            const row = btn.closest('.item-row');
+            const batchSelect = row.querySelector('.batch-select');
+            const newBatchInput = row.querySelector('.new-batch-series');
+            const expInput = row.querySelector('.batch-expiration');
+
+            if (batchSelect.disabled) {
+                batchSelect.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-secondary');
+                newBatchInput.value = '';
+                expInput.readOnly = false;
+                expInput.value = '';
+            } else {
+                // Используем стандартный формат серии с годом и случайным номером
+                const seriesNumber = prompt('Введите номер серии:', 'SER-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 1000));
+                if (seriesNumber) {
+                    batchSelect.disabled = true;
+                    batchSelect.value = '';
+                    btn.innerHTML = '<i class="bi bi-x-lg"></i>';
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-success');
+                    newBatchInput.value = seriesNumber;
+                    expInput.readOnly = false;
+                    expInput.focus();
+                }
+            }
+        };
+
+        document.getElementById('addItem').addEventListener('click', function() {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('tr');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <td>
+                    <select name="Items[${itemIndex}].ProductId" class="form-select product-select" required onchange="loadBatches(this)">
+                        <option value="">Выберите товар</option>
+                        @foreach (var product in Model.Products)
+                        {
+                                <option value="@product.Id" data-price="@product.PriceRetail">@product.Name</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <div class="input-group">
+                        <select name="Items[${itemIndex}].BatchId" class="form-select batch-select"><option value="">Сначала выберите товар</option></select>
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleNewBatch(this)" title="Создать серию"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <input type="hidden" name="Items[${itemIndex}].NewBatchSeries" class="new-batch-series" value="" />
+                </td>
+                <td><input type="date" name="Items[${itemIndex}].BatchExpiration" class="form-control batch-expiration" required /><span class="text-danger batch-exp-error"></span></td>
+                <td><input type="text" name="Items[${itemIndex}].MarkingCode" class="form-control" placeholder="DataMatrix" /></td>
+                <td><input type="number" name="Items[${itemIndex}].Quantity" class="form-control quantity-input" min="1" value="1" required /></td>
+                <td><input type="number" name="Items[${itemIndex}].Price" class="form-control price-input" step="0.01" min="0" required /></td>
+                <td><input type="text" class="form-control sum-input" readonly value="0.00" /></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button></td>
+            `;
+            container.appendChild(row);
+            
+            // Добавляем обработчик события для нового селекта товара
+            const productSelect = row.querySelector('.product-select');
+            productSelect.addEventListener('change', function() {
+                loadBatchesForProduct(this, row);
+            });
+            
+            itemIndex++;
+            setMinDate();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-item')) {
+                e.target.closest('.item-row').remove();
+                calculateTotal();
+            }
+        });
+
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('quantity-input') || e.target.classList.contains('price-input')) {
+                calculateRow(e.target.closest('.item-row'));
+            }
+        });
+
+        function calculateRow(row) {
+            const qty = parseFloat(row.querySelector('.quantity-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            row.querySelector('.sum-input').value = (qty * price).toFixed(2);
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.sum-input').forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+        }
+
+        document.querySelector('form').addEventListener('submit', function(e) {
+            let isValid = true;
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+
+            document.querySelectorAll('.item-row').forEach(row => {
+                const batchSelect = row.querySelector('.batch-select');
+                const newBatchInput = row.querySelector('.new-batch-series');
+                const expInput = row.querySelector('.batch-expiration');
+                const errorSpan = row.querySelector('.batch-exp-error');
+
+                if (!batchSelect.value && !newBatchInput.value) {
+                    errorSpan.textContent = 'Выберите или создайте серию';
+                    isValid = false;
+                } else if (!expInput.value) {
+                    errorSpan.textContent = 'Укажите срок годности';
+                    isValid = false;
+                } else {
+                    const expDate = new Date(expInput.value);
+                    if (expDate <= todayDate) {
+                        errorSpan.textContent = 'Срок должен быть больше текущей даты';
+                        isValid = false;
+                    } else {
+                        errorSpan.textContent = '';
+                    }
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('Исправьте ошибки в форме');
+            }
+        });
+
+        setMinDate();
+    </script>
+}

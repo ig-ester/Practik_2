@@ -1,0 +1,124 @@
+﻿@page "{id:int?}"
+@model Praktik.Pages.Catalogs.WarehouseEditModel
+@{
+    ViewData["Title"] = Model.Warehouse.Id == 0 ? "Новый склад" : "Редактирование склада";
+}
+
+<h2><i class="bi bi-box-seam me-2"></i>@ViewData["Title"]</h2>
+
+@if (!Model.Organizations.Any())
+{
+    <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Внимание!</strong> В системе нет организаций.
+        <a asp-page="Organizations" class="alert-link">Создайте организацию</a> перед добавлением склада.
+    </div>
+}
+
+<form method="post" class="mt-4">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <input type="hidden" asp-for="Warehouse.Id" />
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Основная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Warehouse.Name" class="form-label">
+                            <i class="bi bi-tag me-1"></i>Название склада *
+                        </label>
+                        <input asp-for="Warehouse.Name" class="form-control"
+                               placeholder="Например: Основной склад" required />
+                        <span asp-validation-for="Warehouse.Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Warehouse.Type" class="form-label">
+                                <i class="bi bi-building me-1"></i>Тип склада *
+                            </label>
+                            <select asp-for="Warehouse.Type" class="form-select" required>
+                                <option value="">Выберите тип</option>
+                                <option value="Склад">Склад</option>
+                                <option value="Магазин">Магазин (Торговый зал)</option>
+                                <option value="Аптека">Аптека</option>
+                            </select>
+                            <span asp-validation-for="Warehouse.Type" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Warehouse.OrganizationId" class="form-label">
+                                <i class="bi bi-building me-1"></i>Организация *
+                            </label>
+                            <select asp-for="Warehouse.OrganizationId" class="form-select" required>
+                                <option value="">Выберите организацию</option>
+                                @foreach (var org in Model.Organizations)
+                                {
+                                    <option value="@org.Id">@org.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Warehouse.OrganizationId" class="text-danger"></span>
+                            @if (!Model.Organizations.Any())
+                            {
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i>
+                                    <a asp-page="Organizations" target="_blank">Создать организацию</a>
+                                </small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Действия</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-2"></i>Сохранить
+                        </button>
+                        <a asp-page="Warehouses" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i>Отмена
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.Warehouse.Id > 0)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Информация</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><strong>ID:</strong> @Model.Warehouse.Id</p>
+                        <p class="mb-0"><strong>Организация ID:</strong> @Model.Warehouse.OrganizationId</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const orgSelect = document.querySelector('select[name="Warehouse.OrganizationId"]');
+            if (!orgSelect.value) {
+                e.preventDefault();
+                alert('Пожалуйста, выберите организацию');
+                orgSelect.focus();
+                return false;
+            }
+        });
+    </script>
+}

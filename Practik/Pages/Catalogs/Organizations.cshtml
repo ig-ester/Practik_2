@@ -1,0 +1,79 @@
+﻿@page
+@model Praktik.Pages.Catalogs.OrganizationsModel
+@{
+    ViewData["Title"] = "Организации";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building me-2"></i>Организации</h2>
+    <a asp-page="OrganizationEdit" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Добавить организацию
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Organizations.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Адрес</th>
+                            <th>Дата создания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var org in Model.Organizations)
+                        {
+                            <tr>
+                                <td><strong>@org.Name</strong></td>
+                                <td>@(org.Address ?? "-")</td>
+                                <td>@org.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-page="OrganizationEdit" asp-route-id="@org.Id"
+                                           class="btn btn-outline-primary" title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" asp-page-handler="Delete"
+                                              asp-route-id="@org.Id" class="d-inline"
+                                              onsubmit="return confirm('Удалить организацию? Все связанные данные останутся без привязки.');">
+                                            <button type="submit" class="btn btn-outline-danger" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1"></i>
+                <p class="mb-0 mt-2">Организации не созданы</p>
+            </div>
+        }
+    </div>
+</div>

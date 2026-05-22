@@ -1,0 +1,207 @@
+﻿@page "{id:int}"
+@model Praktik.Pages.Documents.DetailsModel
+@{
+    ViewData["Title"] = $"Документ {Model.Document.Number}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-earmark-text me-2"></i>@ViewData["Title"]</h2>
+    <div class="btn-group">
+        @if (Model.Document.Status == "Draft")
+        {
+            <form method="post" asp-page-handler="ChangeStatus" class="d-inline">
+                <input type="hidden" name="id" value="@Model.Document.Id" />
+                <input type="hidden" name="status" value="Final" />
+                <button type="submit" class="btn btn-success" onclick="return confirm('Провести документ?')">
+                    <i class="bi bi-check-lg me-2"></i>Провести
+                </button>
+            </form>
+            <form method="post" asp-page-handler="ChangeStatus" class="d-inline">
+                <input type="hidden" name="id" value="@Model.Document.Id" />
+                <input type="hidden" name="status" value="Cancelled" />
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Отменить документ?')">
+                    <i class="bi bi-x-lg me-2"></i>Отменить
+                </button>
+            </form>
+            <a asp-page="Edit" asp-route-id="@Model.Document.Id" class="btn btn-primary">
+                <i class="bi bi-pencil me-2"></i>Редактировать
+            </a>
+        }
+        <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('Удалить документ?')">
+            <input type="hidden" name="id" value="@Model.Document.Id" />
+            <button type="submit" class="btn btn-outline-danger" @(Model.Document.Status != "Draft" ? "disabled" : "")>
+                <i class="bi bi-trash me-2"></i>Удалить
+            </button>
+        </form>
+        <a asp-page="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Назад
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>№ документа:</strong> @Model.Document.Number
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Тип:</strong>
+                        @{
+                            string typeBadge = Model.Document.Type switch
+                            {
+                                "Receiving" => "bg-success",
+                                "Posting" => "bg-info",
+                                "Inventory" => "bg-warning",
+                                "WriteOff" => "bg-danger",
+                                "RetailSale" => "bg-primary",
+                                "WholesaleSale" => "bg-secondary",
+                                _ => "bg-secondary"
+                            };
+                        }
+                        <span class="badge @typeBadge">@Model.Document.Type</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Статус:</strong>
+                        @{
+                            string statusBadge = Model.Document.Status switch
+                            {
+                                "Draft" => "bg-warning text-dark",
+                                "Final" => "bg-success",
+                                "Cancelled" => "bg-secondary",
+                                _ => "bg-secondary"
+                            };
+                            string statusText = Model.Document.Status switch
+                            {
+                                "Draft" => "Черновик",
+                                "Final" => "Проведён",
+                                "Cancelled" => "Отменён",
+                                _ => Model.Document.Status
+                            };
+                        }
+                        <span class="badge @statusBadge">@statusText</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Склад:</strong> @Model.Document.WarehouseName
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Контрагент:</strong> @(Model.Document.ContractorName ?? "-")
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Создан:</strong> @Model.Document.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Проведён:</strong> @(Model.Document.CompletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Создал:</strong> @Model.Document.CreatedByName
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Document.Comment))
+                {
+                    <div class="mb-0">
+                        <strong>Комментарий:</strong>
+                        <p class="mb-0">@Model.Document.Comment</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Позиции документа</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Товар</th>
+                                <th>Серия</th>
+                                <th>Код маркировки</th>
+                                <th class="text-end">Кол-во</th>
+                                <th class="text-end">Цена</th>
+                                <th class="text-end">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td><strong>@item.ProductName</strong></td>
+                                    <td>@(item.SeriesNumber ?? "-")</td>
+                                    <td>@(item.MarkingCode ?? "-")</td>
+                                    <td class="text-end">@item.Quantity</td>
+                                    <td class="text-end">@item.Price.ToString("C")</td>
+                                    <td class="text-end"><strong>@item.Sum.ToString("C")</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="5" class="text-end">Итого:</th>
+                                <th class="text-end"><h5 class="mb-0">@Model.Document.TotalAmount.ToString("C")</h5></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Сумма документа</h6>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-primary mb-0">@Model.Document.TotalAmount.ToString("C")</h2>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Действия</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    @if (Model.Document.Status == "Draft")
+                    {
+                        <a asp-page="Edit" asp-route-id="@Model.Document.Id" class="btn btn-primary">
+                            <i class="bi bi-pencil me-2"></i>Редактировать
+                        </a>
+                    }
+                    <a asp-page="Print" asp-route-id="@Model.Document.Id" class="btn btn-outline-secondary" target="_blank">
+                        <i class="bi bi-printer me-2"></i>Печать
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

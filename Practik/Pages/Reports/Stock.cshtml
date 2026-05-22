@@ -1,0 +1,81 @@
+﻿@page
+@model Praktik.Pages.Reports.StockModel
+@{
+    ViewData["Title"] = "Отчёт по остаткам";
+}
+<h2>Остатки на складах</h2>
+<form method="post" class="row g-3 mb-3">
+    <div class="col-md-3"><input asp-for="Filter.WarehouseId" class="form-control" placeholder="ID склада"></div>
+    <div class="col-md-3"><input asp-for="Filter.Category" class="form-control" placeholder="Категория"></div>
+    <div class="col-md-3"><input asp-for="Filter.ExpirationBefore" type="date" class="form-control"></div>
+    <div class="col-md-3"><button class="btn btn-primary w-100">Фильтр</button></div>
+</form>
+@if (Model.Reports.Any())
+{
+    <table class="table table-hover">
+        <thead><tr><th>Склад</th><th>Товар</th><th>Серия</th><th>Годен до</th><th>Кол-во</th><th>Сумма</th><th>Статус</th></tr></thead>
+        <tbody>
+            @foreach (var r in Model.Reports)
+            {
+                <tr class="@(r.IsExpiringSoon ? "table-warning" : "")" 
+                    style="cursor: pointer;" 
+                    onclick="showHistory(@r.ProductId, '@r.Series', '@r.Warehouse')">
+                    <td>@r.Warehouse</td>
+                    <td>@r.ProductName</td>
+                    <td>@r.Series</td>
+                    <td>@r.ExpirationDate?.ToString("dd.MM.yyyy")</td>
+                    <td>@r.Quantity</td>
+                    <td>@r.TotalValue.ToString("C")</td>
+                    <td>@(r.IsExpiringSoon ? "Скоро истекает" : "✅")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <a asp-page-handler="Export" class="btn btn-success mt-3">📥 Экспорт в Excel</a>
+}
+
+<!-- Модальное окно истории -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">История движения товара</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="historyContent">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showHistory(productId, series, warehouse) {
+            const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+            modal.show();
+            
+            fetch(`/api/reports/stock-history?productId=${productId}&series=${encodeURIComponent(series)}&warehouse=${encodeURIComponent(warehouse)}`)
+                .then(r => r.json())
+                .then(data => {
+                    let html = '<h6>Товар: ' + data.productName + '</h6>';
+                    html += '<p>Серия: ' + data.series + ' | Склад: ' + data.warehouse + '</p>';
+                    html += '<table class="table table-sm"><thead><tr><th>Дата</th><th>Документ</th><th>Тип</th><th>Кол-во</th><th>Контрагент</th></tr></thead><tbody>';
+                    
+                    if (data.documents && data.documents.length > 0) {
+                        data.documents.forEach(doc => {
+                            html += `<tr><td>${new Date(doc.date).toLocaleDateString('ru-RU')}</td><td>${doc.number}</td><td>${doc.type}</td><td>${doc.quantity}</td><td>${doc.contractor || '-'}</td></tr>`;
+                        });
+                    } else {
+                        html += '<tr><td colspan="5">Нет документов</td></tr>';
+                    }
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('historyContent').innerHTML = html;
+                })
+                .catch(err => {
+                    document.getElementById('historyContent').innerHTML = '<div class="alert alert-danger">Ошибка загрузки</div>';
+                });
+        }
+    </script>
+}

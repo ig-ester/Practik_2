@@ -1,0 +1,395 @@
+﻿@page
+@model Praktik.Pages.Documents.Sales.WholesaleModel
+@{
+    ViewData["Title"] = "Оптовая продажа";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-seam me-2"></i>Оптовая продажа</h2>
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Назад к списку
+    </a>
+</div>
+
+<form method="post" class="needs-validation" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="card mb-4">
+        <div class="card-header">Информация о продаже</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="WarehouseId" class="form-label">Склад отгрузки *</label>
+                    <select asp-for="WarehouseId" class="form-select" required>
+                        <option value="">Выберите склад</option>
+                        @foreach (var w in Model.Warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="WarehouseId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="BuyerId" class="form-label">Покупатель *</label>
+                    <select asp-for="BuyerId" class="form-select" required>
+                        <option value="">Выберите покупателя</option>
+                        @foreach (var b in Model.Buyers)
+                        {
+                            <option value="@b.Id">@b.Name @(b.INN != null ? $"(ИНН: {b.INN})" : "")</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BuyerId" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Товары</span>
+            <button type="button" id="addItem" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Добавить позицию
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 25%">Товар</th>
+                            <th style="width: 20%">Серия *</th>
+                            <th style="width: 10%">Кол-во</th>
+                            <th style="width: 15%">Цена (опт)</th>
+                            <th style="width: 15%">Сумма</th>
+                            <th style="width: 15%">Код маркировки</th>
+                            <th style="width: 5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsContainer">
+                        @for (int i = 0; i < Model.Items.Count; i++)
+                        {
+                            <tr class="item-row">
+                                <td>
+                                    <select name="Items[@i].ProductId" class="form-select product-select" required onchange="loadBatches(this, @i); loadProductInfo(this, this.closest('.item-row'))">
+                                        <option value="">Выберите товар</option>
+                                        @foreach (var p in Model.Products)
+                                        {
+                                            <option value="@p.Id" data-price="@p.PriceWholesale">@p.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="Items[@i].BatchId" class="form-select batch-select" required>
+                                        <option value="">Сначала выберите товар</option>
+                                    </select>
+                                </td>
+                                <td><input type="number" name="Items[@i].Quantity" class="form-control quantity-input" value="1" min="1" required /></td>
+                                <td><input type="number" name="Items[@i].Price" class="form-control price-input" step="0.01" required /></td>
+                                <td><input type="text" class="form-control sum-input" readonly value="0.00" /></td>
+                                <td><input type="text" name="Items[@i].MarkingCode" class="form-control" placeholder="DataMatrix (опц.)" /></td>
+                                <td><button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="4" class="text-end">Итого:</th>
+                            <th colspan="3"><span id="totalAmount">0.00</span> ₽</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a asp-page="Index" class="btn btn-secondary">Отмена</a>
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-lg me-2"></i>Оформить отгрузку
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let itemIndex = @Model.Items.Count;
+        
+        // Хранилище информации о товарах (признаки Яд, Рецепт и т.д.)
+        const productFlags = {};
+        
+        // Глобальная функция loadBatches для вызова из onchange
+        window.loadBatches = function(selectElement, index) {
+            const row = selectElement.closest('.item-row');
+            loadBatchesForProduct(selectElement, row);
+        };
+        
+        // Загрузка информации о товаре при выборе
+        function loadProductInfo(select, row) {
+            const productId = select.value;
+            if (!productId) return;
+            
+            fetch(`/api/products/${productId}`)
+                .then(r => r.json())
+                .then(data => {
+                    productFlags[productId] = data;
+                    // Сохраняем информацию в data-атрибуты строки
+                    row.dataset.isPoison = data.isPoison ? 'true' : 'false';
+                    row.dataset.isPrescriptionOnly = data.isPrescriptionOnly ? 'true' : 'false';
+                });
+        }
+        
+        function loadBatchesForProduct(select, row) {
+            const productId = select.value;
+            const batchSelect = row.querySelector('.batch-select');
+            const priceInput = row.querySelector('.price-input');
+
+            batchSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+            if (!productId) {
+                batchSelect.innerHTML = '<option value="">Сначала выберите товар</option>';
+                return;
+            }
+
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption && selectedOption.dataset.price) {
+                priceInput.value = selectedOption.dataset.price.toString().replace(',', '.');
+            }
+
+            const url = '/api/batches/by-product?productId=' + encodeURIComponent(productId);
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    batchSelect.innerHTML = '<option value="">Выберите серию</option>';
+
+                    if (!data || data.length === 0) {
+                        batchSelect.innerHTML += '<option value="" disabled>Нет серий - создайте новую</option>';
+                    } else {
+                        data.forEach(batch => {
+                            const expDate = batch.expirationDate ? new Date(batch.expirationDate).toLocaleDateString('ru-RU') : '';
+                            const isExpired = batch.expirationDate && new Date(batch.expirationDate) < new Date();
+                            const option = document.createElement('option');
+                            option.value = batch.id;
+                            option.textContent = batch.seriesNumber + (expDate ? ' (до ' + expDate + ')' : '') + (isExpired ? ' 🔴' : '');
+                            if (isExpired) option.style.color = 'red';
+                            batchSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    batchSelect.innerHTML = '<option value="">❌ Ошибка</option>';
+                });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-item')) {
+                e.target.closest('.item-row').remove();
+                calculateTotal();
+            }
+        });
+
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('quantity-input') || e.target.classList.contains('price-input')) {
+                calculateRow(e.target.closest('.item-row'));
+            }
+        });
+
+        function calculateRow(row) {
+            const qty = parseFloat(row.querySelector('.quantity-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            row.querySelector('.sum-input').value = (qty * price).toFixed(2);
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.sum-input').forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.item-row').forEach(row => {
+                const productSelect = row.querySelector('.product-select');
+                if (productSelect && productSelect.value) {
+                    loadBatchesForProduct(productSelect, row);
+                    loadProductInfo(productSelect, row);
+                }
+                calculateRow(row);
+            });
+            
+        document.getElementById('addItem').addEventListener('click', function() {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('tr');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <td>
+                    <select name="Items[${itemIndex}].ProductId" class="form-select product-select" required onchange="loadBatches(this)">
+                        <option value="">Выберите товар</option>
+                        @foreach (var product in Model.Products)
+                        {
+                                <option value="@product.Id" data-price="@product.PriceWholesale">@product.Name</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select name="Items[${itemIndex}].BatchId" class="form-select batch-select" required>
+                        <option value="">Сначала выберите товар</option>
+                    </select>
+                </td>
+                <td><input type="number" name="Items[${itemIndex}].Quantity" class="form-control quantity-input" value="1" min="1" required /></td>
+                <td><input type="number" name="Items[${itemIndex}].Price" class="form-control price-input" step="0.01" required /></td>
+                <td><input type="text" class="form-control sum-input" readonly value="0.00" /></td>
+                <td><input type="text" name="Items[${itemIndex}].MarkingCode" class="form-control" placeholder="DataMatrix (опц.)" /></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button></td>
+            `;
+            container.appendChild(row);
+            
+            // Добавляем обработчики событий для новых элементов
+            const productSelect = row.querySelector('.product-select');
+            productSelect.addEventListener('change', function() {
+                loadBatchesForProduct(this, row);
+                loadProductInfo(this, row);
+            });
+            
+            itemIndex++;
+        });
+        
+        // Модальное окно для рецепта
+        let prescriptionData = null;
+        
+        function showPrescriptionModal(row) {
+            return new Promise((resolve) => {
+                const modalHtml = `
+                    <div class="modal fade" id="prescriptionModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Данные рецепта</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Номер рецепта *</label>
+                                        <input type="text" class="form-control" id="rxNumber" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Дата выдачи *</label>
+                                        <input type="date" class="form-control" id="rxDate" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">ФИО врача</label>
+                                        <input type="text" class="form-control" id="rxDoctor" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Название клиники</label>
+                                        <input type="text" class="form-control" id="rxClinic" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">ФИО пациента</label>
+                                        <input type="text" class="form-control" id="rxPatient" />
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                    <button type="button" class="btn btn-primary" id="savePrescription">Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                let modalContainer = document.getElementById('modalContainer');
+                if (!modalContainer) {
+                    modalContainer = document.createElement('div');
+                    modalContainer.id = 'modalContainer';
+                    document.body.appendChild(modalContainer);
+                }
+                modalContainer.innerHTML = modalHtml;
+                
+                const modal = new bootstrap.Modal(document.getElementById('prescriptionModal'));
+                modal.show();
+                
+                document.getElementById('savePrescription').addEventListener('click', async () => {
+                    const data = {
+                        number: document.getElementById('rxNumber').value,
+                        issueDate: document.getElementById('rxDate').value,
+                        doctorName: document.getElementById('rxDoctor').value,
+                        clinicName: document.getElementById('rxClinic').value,
+                        patientName: document.getElementById('rxPatient').value
+                    };
+                    
+                    if (!data.number || !data.issueDate) {
+                        alert('Заполните обязательные поля');
+                        return;
+                    }
+                    
+                    // Сохраняем рецепт в базу данных
+                    try {
+                        const response = await fetch('/api/prescriptions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            prescriptionData = { id: result.id, number: result.number };
+                            modal.hide();
+                            resolve(prescriptionData);
+                        } else {
+                            alert('Ошибка сохранения рецепта');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Ошибка соединения с сервером');
+                    }
+                });
+                
+                document.getElementById('prescriptionModal').addEventListener('hidden.bs.modal', () => {
+                    modalContainer.innerHTML = '';
+                });
+            });
+        }
+        
+        // Проверка необходимости рецепта при отправке формы
+        document.querySelector('form').addEventListener('submit', async function(e) {
+            let needsPrescription = false;
+            let hasPrescription = prescriptionData !== null;
+            
+            document.querySelectorAll('.item-row').forEach(row => {
+                const isPoison = row.dataset.isPoison === 'true';
+                const isPrescriptionOnly = row.dataset.isPrescriptionOnly === 'true';
+                if ((isPoison || isPrescriptionOnly) && !hasPrescription) {
+                    needsPrescription = true;
+                }
+            });
+            
+            if (needsPrescription) {
+                e.preventDefault();
+                try {
+                    await showPrescriptionModal();
+                    // После получения рецепта, добавляем его ID в форму
+                    if (prescriptionData) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'PrescriptionId';
+                        input.value = prescriptionData.id;
+                        this.appendChild(input);
+                        this.submit();
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        });
+    </script>
+}

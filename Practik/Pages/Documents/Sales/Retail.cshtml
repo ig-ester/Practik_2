@@ -1,0 +1,170 @@
+﻿@page
+@model Praktik.Pages.Documents.Sales.RetailModel
+@{
+    ViewData["Title"] = "Касса";
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card p-3 mb-3">
+            <h4>Сканер</h4>
+            <div class="input-group">
+                <input type="text" id="scanInput" class="form-control" placeholder="Скан DataMatrix..." autofocus />
+                <button class="btn btn-primary" onclick="scan()">OK</button>
+            </div>
+        </div>
+        
+        <div class="card p-3 mb-3">
+            <h5>Выбор товара</h5>
+            <select id="productSelect" class="form-select mb-2">
+                <option value="">Выберите товар</option>
+                @foreach (var p in Model.Products)
+                {
+                    <option value="@p.Id" data-price="@p.PriceRetail">@p.Name</option>
+                }
+            </select>
+            <div class="input-group mb-2">
+                <span class="input-group-text">Серия</span>
+                <select id="batchSelect" class="form-select">
+                    <option value="">Сначала выберите товар</option>
+                </select>
+            </div>
+            <button class="btn btn-success w-100" onclick="addProduct()">Добавить в чек</button>
+        </div>
+        
+        <div class="card p-3">
+            <h5>Итого: @Model.Cart.Sum(c => c.Price) ₽</h5>
+            <form method="post" asp-page-handler="Pay">
+                <input type="hidden" name="WarehouseId" value="1" />
+                <button type="submit" class="btn btn-success w-100 mt-2" disabled="@(!Model.Cart.Any())">Оплатить</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h4>Чек</h4>
+            <table class="table table-striped">
+                <thead><tr><th>Товар</th><th>Серия</th><th>Код</th><th>Цена</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var item in Model.Cart)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@(item.BatchId > 0 ? "Серия #" + item.BatchId : "")</td>
+                            <td>@item.MarkingCode</td>
+                            <td>@item.Price</td>
+                            <td><button class="btn btn-sm btn-danger" onclick="removeItem(@item.ProductId)"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('scanInput').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') scan();
+        });
+        
+        // Обработчик выбора товара
+        document.getElementById('productSelect').addEventListener('change', function() {
+            const productId = this.value;
+            const batchSelect = document.getElementById('batchSelect');
+            
+            if (!productId) {
+                batchSelect.innerHTML = '<option value="">Сначала выберите товар</option>';
+                return;
+            }
+            
+            batchSelect.innerHTML = '<option value="">Загрузка...</option>';
+            
+            fetch('/api/batches/by-product?productId=' + encodeURIComponent(productId))
+                .then(r => r.json())
+                .then(data => {
+                    batchSelect.innerHTML = '<option value="">Выберите серию</option>';
+                    if (!data || data.length === 0) {
+                        batchSelect.innerHTML += '<option value="" disabled>Нет серий</option>';
+                    } else {
+                        data.forEach(batch => {
+                            const expDate = batch.expirationDate ? new Date(batch.expirationDate).toLocaleDateString('ru-RU') : '';
+                            const option = document.createElement('option');
+                            option.value = batch.id;
+                            option.textContent = batch.seriesNumber + (expDate ? ' (до ' + expDate + ')' : '');
+                            batchSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки серий:', error);
+                    batchSelect.innerHTML = '<option value="">❌ Ошибка</option>';
+                });
+        });
+
+        function scan() {
+            const code = document.getElementById('scanInput').value;
+            if(!code) return;
+            fetch(`?handler=Scan&code=${code}`)
+                .then(r => r.json())
+                .then(data => {
+                    if(data.error) alert(data.error);
+                    else location.reload();
+                })
+                .catch(error => {
+                    console.error('Ошибка сканирования:', error);
+                    alert('Ошибка при сканировании');
+                });
+        }
+        
+        function addProduct() {
+            const productId = document.getElementById('productSelect').value;
+            const batchId = document.getElementById('batchSelect').value;
+            
+            if (!productId) {
+                alert('Выберите товар');
+                return;
+            }
+            
+            if (!batchId) {
+                alert('Выберите серию');
+                return;
+            }
+            
+            const select = document.getElementById('productSelect');
+            const option = select.options[select.selectedIndex];
+            const price = option.dataset.price;
+            const productName = option.text;
+            
+            fetch(`?handler=AddProduct&productId=${productId}&batchId=${batchId || ''}`, {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.error) alert(data.error);
+                else location.reload();
+            })
+            .catch(error => {
+                console.error('Ошибка добавления:', error);
+                alert('Ошибка при добавлении товара');
+            });
+        }
+        
+        function removeItem(productId) {
+            fetch(`?handler=RemoveItem&productId=${productId}`, {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.error) alert(data.error);
+                else location.reload();
+            })
+            .catch(error => {
+                console.error('Ошибка удаления:', error);
+                alert('Ошибка при удалении товара');
+            });
+        }
+    </script>
+}

@@ -1,0 +1,93 @@
+﻿@page "{id:int?}"
+@model Praktik.Pages.Catalogs.UserEditModel
+@{
+    ViewData["Title"] = Model.User.Id == 0 ? "Новый пользователь" : "Редактирование пользователя";
+}
+
+<h2><i class="bi bi-person me-2"></i>@ViewData["Title"]</h2>
+
+<form method="post" class="mt-4">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <input type="hidden" asp-for="User.Id" />
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="User.Login" class="form-label">Логин *</label>
+                        <input asp-for="User.Login" class="form-control" required />
+                        <span asp-validation-for="User.Login" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label">
+                            @(Model.User.Id == 0 ? "Пароль *" : "Новый пароль (оставьте пустым, чтобы не менять)")
+                        </label>
+                        <input asp-for="Password" type="password" class="form-control"
+                               required="@(Model.User.Id == 0)" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="User.RoleId" class="form-label">Роль *</label>
+                        <select asp-for="User.RoleId" class="form-select" required>
+                            <option value="">Выберите роль</option>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <option value="@role.Id">@role.Name - @role.Description</option>
+                            }
+                        </select>
+                        <span asp-validation-for="User.RoleId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="User.OrganizationId" class="form-label">Организация *</label>
+                        <select asp-for="User.OrganizationId" class="form-select" required>
+                            <option value="">Выберите организацию</option>
+                            @foreach (var org in Model.Organizations)
+                            {
+                                <option value="@org.Id">@org.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="User.OrganizationId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">Информация</div>
+                <div class="card-body">
+                    @if (Model.User.Id > 0)
+                    {
+                        <p><strong>Создан:</strong> @Model.User.CreatedAt.ToString("dd.MM.yyyy HH:mm")</p>
+                        <p><strong>Последний вход:</strong> @(Model.User.LastLogin?.ToString("dd.MM.yyyy HH:mm") ?? "Никогда")</p>
+                        <p>
+                            <strong>Статус:</strong>
+                            @(Model.User.IsActive ? "Активен" : "Заблокирован")
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">Создание нового пользователя системы</p>
+                    }
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>Сохранить
+                </button>
+                <a asp-page="Users" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-2"></i>Отмена
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

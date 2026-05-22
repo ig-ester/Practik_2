@@ -1,0 +1,255 @@
+﻿@page
+@model Praktik.Pages.Documents.Inventory.CreateModel
+@{
+    ViewData["Title"] = "Инвентаризация";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clipboard-check me-2"></i>Инвентаризация</h2>
+    <a asp-page="/Documents/Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Назад к списку
+    </a>
+</div>
+
+<form method="post" class="needs-validation" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+    <div class="card mb-4">
+        <div class="card-header">Параметры проведения</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="WarehouseId" class="form-label">Склад *</label>
+                    <select asp-for="WarehouseId" class="form-select" required>
+                        <option value="">Выберите склад</option>
+                        @foreach (var wh in Model.Warehouses)
+                        {
+                            <option value="@wh.Id">@wh.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="InventoryDate" class="form-label">Дата проведения *</label>
+                    <input asp-for="InventoryDate" type="date" class="form-control" required />
+                </div>
+            </div>
+            <div class="mb-0">
+                <label asp-for="Comment" class="form-label">Комментарий / Причина</label>
+                <textarea asp-for="Comment" class="form-control" rows="2" placeholder="Например: Плановая инвентаризация, пересчёт остатков"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Сверка остатков</span>
+            <button type="button" id="addItem" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Добавить позицию
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0" id="inventoryTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 20%">Товар</th>
+                            <th style="width: 15%">Серия</th>
+                            <th style="width: 15%">Ожидаемый остаток</th>
+                            <th style="width: 15%">Фактический остаток</th>
+                            <th style="width: 15%">Расхождение</th>
+                            <th style="width: 15%">Код маркировки</th>
+                            <th style="width: 5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsContainer">
+                        @for (int i = 0; i < Model.Items.Count; i++)
+                        {
+                            <tr class="item-row">
+                                <td>
+                                    <select name="Items[@i].ProductId" class="form-select product-select" required onchange="loadBatches(this, @i)">
+                                        <option value="">Выберите товар</option>
+                                        @foreach (var prod in Model.Products)
+                                        {
+                                            <option value="@prod.Id">@prod.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="Items[@i].BatchId" class="form-select batch-select" onchange="loadExpectedStock(this, @i)">
+                                        <option value="">Выберите серию</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="Items[@i].ExpectedQty" class="form-control expected-qty" value="0" min="0" readonly />
+                                </td>
+                                <td>
+                                    <input type="number" name="Items[@i].ActualQty" class="form-control actual-qty" value="0" min="0" onchange="calcDiscrepancy(this)" />
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control discrepancy-display" readonly value="0" />
+                                </td>
+                                <td>
+                                    <input type="text" name="Items[@i].MarkingCode" class="form-control" placeholder="DataMatrix (опц.)" />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a asp-page="/Documents/Index" class="btn btn-secondary">Отмена</a>
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-lg me-2"></i>Провести инвентаризацию
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let itemIndex = @Model.Items.Count;
+        let currentInventoryDate = '@Model.InventoryDate.ToString("yyyy-MM-dd")';
+
+        document.getElementById('InventoryDate').addEventListener('change', function() {
+            const newDate = this.value;
+            if (newDate !== currentInventoryDate) {
+                if (confirm('Дата изменена. Перезаполнить остатки на новую дату?')) {
+                    loadStockForDate(newDate);
+                    currentInventoryDate = newDate;
+                }
+            }
+        });
+
+        window.loadBatches = function(selectElement) {
+            const row = selectElement.closest('.item-row');
+            loadBatchesForProduct(selectElement, row);
+        };
+
+        function loadBatchesForProduct(select, row) {
+            const productId = select.value;
+            const batchSelect = row.querySelector('.batch-select');
+
+            batchSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+            if (!productId) {
+                batchSelect.innerHTML = '<option value="">Сначала выберите товар</option>';
+                return;
+            }
+
+            const url = '/api/batches/by-product?productId=' + encodeURIComponent(productId);
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    batchSelect.innerHTML = '<option value="">Выберите серию</option>';
+
+                    if (!data || data.length === 0) {
+                        batchSelect.innerHTML += '<option value="" disabled>Нет серий</option>';
+                    } else {
+                        data.forEach(batch => {
+                            const expDate = batch.expirationDate ? new Date(batch.expirationDate).toLocaleDateString('ru-RU') : '';
+                            const isExpired = batch.expirationDate && new Date(batch.expirationDate) < new Date();
+                            const option = document.createElement('option');
+                            option.value = batch.id;
+                            option.textContent = batch.seriesNumber + (expDate ? ' (до ' + expDate + ')' : '') + (isExpired ? ' 🔴' : '');
+                            if (isExpired) option.style.color = 'red';
+                            batchSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    batchSelect.innerHTML = '<option value="">❌ Ошибка</option>';
+                });
+        }
+
+        function addStockRow(stock) {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('tr');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <td><strong>${stock.productName}</strong></td>
+                <td>${stock.seriesNumber}</td>
+                <td><input type="number" name="Items[${itemIndex}].ExpectedQty" class="form-control expected-qty" value="${stock.quantity}" readonly /></td>
+                <td><input type="number" name="Items[${itemIndex}].ActualQty" class="form-control actual-qty" value="0" min="0" onchange="calcDiscrepancy(this)" /></td>
+                <td><input type="text" class="form-control discrepancy-display" readonly value="0" /></td>
+                <td><input type="hidden" name="Items[${itemIndex}].ProductId" value="${stock.productId}" /></td>
+                <td><input type="hidden" name="Items[${itemIndex}].BatchId" value="${stock.batchId}" /></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button></td>
+            `;
+            container.appendChild(row);
+            itemIndex++;
+        }
+
+        document.getElementById('addItem').addEventListener('click', function() {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('tr');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <td>
+                    <select name="Items[${itemIndex}].ProductId" class="form-select product-select" required onchange="loadBatches(this)">
+                        <option value="">Выберите товар</option>
+                        @foreach (var product in Model.Products)
+                        {
+                                <option value="@product.Id">@product.Name</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <select name="Items[${itemIndex}].BatchId" class="form-select batch-select">
+                        <option value="">Сначала выберите товар</option>
+                    </select>
+                </td>
+                <td><input type="number" name="Items[${itemIndex}].ExpectedQty" class="form-control expected-qty" value="0" readonly /></td>
+                <td><input type="number" name="Items[${itemIndex}].ActualQty" class="form-control actual-qty" value="0" min="0" onchange="calcDiscrepancy(this)" /></td>
+                <td><input type="text" class="form-control discrepancy-display" readonly value="0" /></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-item"><i class="bi bi-trash"></i></button></td>
+            `;
+            container.appendChild(row);
+            
+            // Добавляем обработчик события для нового селекта товара
+            const productSelect = row.querySelector('.product-select');
+            productSelect.addEventListener('change', function() {
+                loadBatchesForProduct(this, row);
+            });
+            
+            itemIndex++;
+        });
+
+        function calcDiscrepancy(input) {
+            const row = input.closest('tr');
+            const expected = parseFloat(row.querySelector('.expected-qty').value) || 0;
+            const actual = parseFloat(input.value) || 0;
+            const diff = actual - expected;
+
+            const display = row.querySelector('.discrepancy-display');
+            display.value = diff > 0 ? `+${diff}` : diff;
+            display.className = `form-control ${diff < 0 ? 'text-danger fw-bold' : diff > 0 ? 'text-success fw-bold' : ''}`;
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-item')) {
+                e.target.closest('.item-row').remove();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const warehouseId = document.querySelector('select[name="WarehouseId"]').value;
+            const date = document.getElementById('InventoryDate').value;
+            if (warehouseId && date) {
+                loadStockForDate(date);
+            }
+        });
+    </script>
+}

@@ -1,0 +1,131 @@
+﻿@page "{id:int?}"
+@model Praktik.Pages.Catalogs.ProductEditModel
+@{
+    ViewData["Title"] = Model.Product.Id == 0 ? "Новый товар" : "Редактирование товара";
+}
+
+<h2><i class="bi bi-box me-2"></i>@ViewData["Title"]</h2>
+
+<form method="post" class="mt-4">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <input type="hidden" asp-for="Product.Id" />
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">Основная информация</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Product.Name" class="form-label">Наименование *</label>
+                        <input asp-for="Product.Name" class="form-control" required />
+                        <span asp-validation-for="Product.Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Product.Category" class="form-label">Категория</label>
+                            <select asp-for="Product.Category" class="form-select">
+                                <option value="">Выберите категорию</option>
+                                <option value="Лекарства">Лекарства</option>
+                                <option value="Изделия медназначения">Изделия медназначения</option>
+                                <option value="БАД">БАД</option>
+                                <option value="Прочее">Прочее</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Product.Unit" class="form-label">Единица измерения</label>
+                            <input asp-for="Product.Unit" class="form-control" placeholder="шт, упак, мл" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Product.Barcode" class="form-label">Штрихкод</label>
+                        <input asp-for="Product.Barcode" class="form-control" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Product.Gtin" class="form-label">GTIN</label>
+                        <input asp-for="Product.Gtin" class="form-control" maxlength="14" />
+                    </div>
+
+                    <div class="form-check">
+                        <input asp-for="Product.IsMarked" class="form-check-input" />
+                        <label asp-for="Product.IsMarked" class="form-check-label">
+                            Требуется маркировка DataMatrix
+                        </label>
+                    </div>
+                    
+                    <hr class="my-3" />
+                    
+                    <h5>Дополнительные признаки</h5>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Product.MarkingCategory" class="form-label">Категория маркировки</label>
+                        <select asp-for="Product.MarkingCategory" class="form-select">
+                            <option value="">Не выбрано</option>
+                            <option value="Лекарства">Лекарства</option>
+                            <option value="Молоко">Молоко</option>
+                            <option value="Вода">Вода</option>
+                            <option value="БАД">БАД</option>
+                            <option value="Антисептики">Антисептики</option>
+                            <option value="Бионика">Бионика</option>
+                            <option value="Кресла-коляски">Кресла-коляски</option>
+                            <option value="Импланты">Импланты</option>
+                            <option value="Прочее">Прочее</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input asp-for="Product.IsPoison" class="form-check-input" />
+                        <label asp-for="Product.IsPoison" class="form-check-label">
+                            Яд (сильнодействующее вещество)
+                        </label>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input asp-for="Product.IsZnvlp" class="form-check-input" />
+                        <label asp-for="Product.IsZnvlp" class="form-check-label">
+                            ЖНВЛП (Жизненно необходимые лекарственные препараты)
+                        </label>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input asp-for="Product.IsPrescriptionOnly" class="form-check-input" />
+                        <label asp-for="Product.IsPrescriptionOnly" class="form-check-label">
+                            Отпуск по рецептам
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">Цены</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Product.PriceRetail" class="form-label">Розничная цена</label>
+                        <input asp-for="Product.PriceRetail" type="number" step="0.01" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Product.PriceWholesale" class="form-label">Оптовая цена</label>
+                        <input asp-for="Product.PriceWholesale" type="number" step="0.01" class="form-control" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>Сохранить
+                </button>
+                <a asp-page="Products" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-2"></i>Отмена
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

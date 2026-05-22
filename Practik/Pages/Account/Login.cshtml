@@ -1,0 +1,23 @@
+﻿@page
+@model Praktik.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Вход";
+}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white"><h4 class="mb-0">Авторизация</h4></div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3"><label class="form-label">Логин</label><input asp-for="Input.Login" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Пароль</label><input asp-for="Input.Password" type="password" class="form-control" required></div>
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger">@Model.ErrorMessage</div>
+                    }
+                    <button type="submit" class="btn btn-primary w-100">Войти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

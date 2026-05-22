@@ -1,0 +1,61 @@
+﻿@page "{id:int?}"
+@model Praktik.Pages.Catalogs.ContractorEditModel
+@{
+    ViewData["Title"] = Model.Contractor.Id == 0 ? "Новый контрагент" : "Редактирование контрагента";
+}
+
+<h2><i class="bi bi-building me-2"></i>@ViewData["Title"]</h2>
+
+<form method="post" class="mt-4">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <input type="hidden" asp-for="Contractor.Id" />
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Contractor.Name" class="form-label">Наименование *</label>
+                        <input asp-for="Contractor.Name" class="form-control" required />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Contractor.Type" class="form-label">Тип *</label>
+                            <select asp-for="Contractor.Type" class="form-select" required>
+                                <option value="">Выберите тип</option>
+                                <option value="Supplier">Поставщик</option>
+                                <option value="Buyer">Покупатель</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Contractor.INN" class="form-label">ИНН</label>
+                            <input asp-for="Contractor.INN" class="form-control" maxlength="12" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Contractor.Address" class="form-label">Адрес</label>
+                        <input asp-for="Contractor.Address" class="form-control" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Contractor.ContactInfo" class="form-label">Контактная информация</label>
+                        <textarea asp-for="Contractor.ContactInfo" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>Сохранить
+                </button>
+                <a asp-page="Contractors" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-2"></i>Отмена
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
