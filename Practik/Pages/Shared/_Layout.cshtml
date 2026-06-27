@@ -3,152 +3,158 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Praktik</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <title>@ViewData["Title"] - Practik</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" />
 </head>
 <body>
     @if (User.Identity?.IsAuthenticated == true)
     {
         <div class="wrapper">
+            <!-- SIDEBAR -->
             <nav id="sidebar" class="sidebar">
                 <div class="sidebar-header">
                     <div class="logo">
-                        
-                        @* <i class="bi bi-capsule-pill"></i> *@
-                        <span>Praktik</span>
+                        <i class="bi bi-capsule-pill"></i>
+                        <span>Practik</span>
                     </div>
-                    <p class="text-muted small mb-0">Система учёта препаратов</p>
+                    <small>Система учёта ЛП</small>
                 </div>
 
-                <ul class="nav-components">
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Index">
-                                <i class="bi bi-file-earmark-text"></i>
-                                <span>Документы</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Receiving/Create">
-                                <i class="bi bi-box-arrow-in-down"></i>
-                                <span>Приёмка</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Posting/Create">
-                                <i class="bi bi-box-arrow-in-up"></i>
-                                <span>Оприходование</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Inventory/Create">
-                                <i class="bi bi-clipboard-check"></i>
-                                <span>Инвентаризация</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/WriteOff/Create">
-                                <i class="bi bi-trash"></i>
-                                <span>Списание</span>
-                            </a>
-                        </li>
-                    }
+                <!-- АККОРДЕОН МЕНЮ -->
+                <div id="sidebarAccordion">
+                    <ul class="nav-components">
 
-                    @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("Admin"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Sales/Retail">
-                                <i class="bi bi-cart-check"></i>
-                                <span>Розничная продажа</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Documents/Sales/Wholesale">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Оптовая продажа</span>
-                            </a>
-                        </li>
-                    }
+                        @* === ГРУППА: ДОКУМЕНТЫ === *@
+                        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier"))
+                        {
+                            <li class="nav-group">
+                                <a class="nav-group-toggle" data-bs-toggle="collapse" href="#collapseDocuments" aria-expanded="false">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                    <span>Документы</span>
+                                    <i class="bi bi-chevron-down toggle-icon ms-auto"></i>
+                                </a>
+                                <div class="collapse" id="collapseDocuments" data-bs-parent="#sidebarAccordion">
+                                    <ul class="nav-submenu">
+                                        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                                        {
+                                            <li><a class="nav-link" asp-page="/Documents/Index"><i class="bi bi-list-ul"></i><span>Список документов</span></a></li>
+                                            <li><a class="nav-link" asp-page="/Documents/Receiving/Create"><i class="bi bi-box-arrow-in-down"></i><span>Приёмка</span></a></li>
+                                            <li><a class="nav-link" asp-page="/Documents/Posting/Create"><i class="bi bi-box-arrow-in-up"></i><span>Оприходование</span></a></li>
+                                            <li><a class="nav-link" asp-page="/Documents/Inventory/Create"><i class="bi bi-clipboard-check"></i><span>Инвентаризация</span></a></li>
+                                            <li><a class="nav-link" asp-page="/Documents/WriteOff/Create"><i class="bi bi-trash"></i><span>Списание</span></a></li>
+                                        }
+                                        @if (User.IsInRole("Cashier") || User.IsInRole("Manager") || User.IsInRole("Admin"))
+                                        {
+                                            <li><a class="nav-link" asp-page="/Documents/Sales/Retail"><i class="bi bi-cart-check"></i><span>Розничная продажа</span></a></li>
+                                            <li><a class="nav-link" asp-page="/Documents/Sales/Wholesale"><i class="bi bi-box-seam"></i><span>Оптовая продажа</span></a></li>
+                                        }
+                                    </ul>
+                                </div>
+                            </li>
+                        }
 
-                    <li class="nav-item">
-                        <a class="nav-link" asp-page="/Reports/Stock">
-                            <i class="bi bi-bar-chart-line"></i>
-                            <span>Отчёт по остаткам</span>
-                        </a>
-                    </li>
+                        @* === ГРУППА: СПРАВОЧНИКИ === *@
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-group">
+                                <a class="nav-group-toggle" data-bs-toggle="collapse" href="#collapseCatalogs" aria-expanded="false">
+                                    <i class="bi bi-journal-bookmark"></i>
+                                    <span>Справочники</span>
+                                    <i class="bi bi-chevron-down toggle-icon ms-auto"></i>
+                                </a>
+                                <div class="collapse" id="collapseCatalogs" data-bs-parent="#sidebarAccordion">
+                                    <ul class="nav-submenu">
+                                        <li><a class="nav-link" asp-page="/Catalogs/Products"><i class="bi bi-list-ul"></i><span>Номенклатура</span></a></li>
+                                        <li><a class="nav-link" asp-page="/Catalogs/Contractors"><i class="bi bi-people"></i><span>Контрагенты</span></a></li>
+                                        <li><a class="nav-link" asp-page="/Catalogs/Organizations"><i class="bi bi-building"></i><span>Организации</span></a></li>
+                                        <li><a class="nav-link" asp-page="/Catalogs/Warehouses"><i class="bi bi-box"></i><span>Склады</span></a></li>
+                                        <li><a class="nav-link" asp-page="/Catalogs/Users"><i class="bi bi-person-badge"></i><span>Пользователи</span></a></li>
+                                    </ul>
+                                </div>
+                            </li>
+                        }
 
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <li class="nav-divider">Справочники</li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Catalogs/Products">
-                                <i class="bi bi-list-ul"></i>
-                                <span>Номенклатура</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Catalogs/Contractors">
-                                <i class="bi bi-people"></i>
-                                <span>Контрагенты</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Catalogs/Organizations">
-                                <i class="bi bi-building"></i>
-                                <span>Организации</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Catalogs/Warehouses">
-                                <i class="bi bi-building"></i>
-                                <span>Склады</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-page="/Catalogs/Users">
-                                <i class="bi bi-person-badge"></i>
-                                <span>Пользователи</span>
-                            </a>
-                        </li>
-                    }
-                </ul>
+                        @* === ГРУППА: ОТЧЁТЫ === *@
+                        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier"))
+                        {
+                            <li class="nav-group">
+                                <a class="nav-group-toggle" data-bs-toggle="collapse" href="#collapseReports" aria-expanded="false">
+                                    <i class="bi bi-bar-chart-line"></i>
+                                    <span>Отчёты</span>
+                                    <i class="bi bi-chevron-down toggle-icon ms-auto"></i>
+                                </a>
+                                <div class="collapse" id="collapseReports" data-bs-parent="#sidebarAccordion">
+                                    <ul class="nav-submenu">
+                                        <li><a class="nav-link" asp-page="/Reports/Stock"><i class="bi bi-box-seam"></i><span>Отчёт по остаткам</span></a></li>
+                                    </ul>
+                                </div>
+                            </li>
+                        }
+
+                    </ul>
+                </div>
 
                 <div class="sidebar-footer">
-                    <form method="post" asp-page="/Account/Logout" class="d-inline">
-                        <button type="submit" class="btn btn-logout w-100">
+                    <form method="post" asp-page="/Account/Logout" class="logout-form">
+                        <button type="submit" class="btn-logout w-100">
                             <i class="bi bi-box-arrow-right"></i>
-                            <span>Выйти</span>
+                            <span>Выход</span>
                         </button>
                     </form>
                 </div>
             </nav>
 
-            <div id="content" class="content">
+            <!-- CONTENT -->
+            <div class="content">
                 <header class="top-navbar">
                     <div class="navbar-left">
-                        <button type="button" id="sidebarCollapse" class="btn btn-menu-toggle d-lg-none">
+                        <button id="sidebarCollapse" class="btn-menu-toggle">
                             <i class="bi bi-list"></i>
                         </button>
-                        <h4 class="mb-0">@ViewData["Title"]</h4>
+                        <h4>@ViewData["Title"]</h4>
                     </div>
-                    <div class="navbar-right">
-                        <div class="user-info">
-                            <i class="bi bi-person-circle"></i>
-                            <div class="user-details">
-                                <span class="user-name">@User.Identity.Name</span>
-                                <span class="user-role">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
-                            </div>
+                    <div class="user-info">
+                        <i class="bi bi-person-circle"></i>
+                        <div class="user-details">
+                            <span class="user-name">@User.Identity.Name</span>
+                            <span class="user-role">
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <text>Администратор</text>
+                                }
+                                else if (User.IsInRole("Manager"))
+                                {
+
+                                    <text>Заведующий</text>
+                                }
+                                else if (User.IsInRole("Cashier"))
+                                {
+
+                                    <text>Кассир</text>
+                                }
+                            </span>
                         </div>
                     </div>
                 </header>
 
                 <main class="main-content">
-                    <div class="container-fluid">
-                        @RenderBody()
-                    </div>
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @RenderBody()
                 </main>
             </div>
         </div>
@@ -158,9 +164,9 @@
         @RenderBody()
     }
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
